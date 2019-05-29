@@ -1,7 +1,9 @@
 //hash_table.h
 
 /*define const parameter*/
-#define HASH_TABLE_MAX_SIZE 53;
+#define HASH_TABLE_MAX_SIZE 53
+#define HT_PRIME_1 151
+#define HT_PRIME_2 163
 /*key-value pairs (items) will each be stored in a struct*/
 typedef struct {
 	char * key;
@@ -18,7 +20,7 @@ typedef struct {
 
 ht_hash_table* ht_new();
 static ht_item * ht_new_item(const char *k, const char* v);
-static void ht_del_item(ht_item* i)
+static void ht_del_item(ht_item* i);
 void ht_del_hash_table(ht_hash_table* ht) ;
 static int ht_hash(const char* s, const int a, const int m);
 static int ht_get_hash(const char* s, const int num_buckets, const int attempt);
