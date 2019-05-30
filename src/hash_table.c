@@ -17,6 +17,16 @@ static ht_item * ht_new_item(const char *k, const char* v)
 	 * The memory obtained is done dynamically using malloc */
 	return i;
 }
+static ht_hash_table* ht_new_sized(const int base_size)
+{
+	ht_hash_table* ht = xmalloc(sizeof(ht_hash_table));
+	ht->base_size = base_size;
+
+	ht->size = next_prime(ht->base_size);
+	ht->count = 0;
+	ht->items = xcalloc((size_t)ht->size, sizeof(ht_item*));
+	return ht;
+}
 /* function ht_new initialises a new hash table.
  * size defines how many items we can strore
  * We initialise the array of items with calloc,
@@ -24,12 +34,56 @@ static ht_item * ht_new_item(const char *k, const char* v)
  * A NULL entry in the array indicates that the bucket is empty.
  */
 ht_hash_table* ht_new() {
+	return ht_new_sized(HT_INITIAL_BASE_SIZE);
+	/*
     ht_hash_table* ht = malloc(sizeof(ht_hash_table));
 
-    ht->size = HASH_TABLE_MAX_SIZE;
+    ht->size = HT_INITIAL_BASE_SIZE;
     ht->count = 0;
     ht->items = calloc((size_t)ht->size, sizeof(ht_item*));
     return ht;
+    */
+}
+/*RESIZE
+ * In our resize function, we check to make sure we're not attempting to reduce
+ *  the size of the hash table below its minimum. We then initialise a new hash table
+ *  with the desired size. All non NULL or deleted items are inserted into the new hash table.
+ *   We then swap the attributes of the new and old hash tables before deleting the old*/
+static void ht_resize(ht_hash_table* ht, const int base_size){
+	if(base_size < HT_INITIAL_BASE_SIZE){
+		return;
+	}
+	ht_hash_table* new_ht = ht_new_sized(base_size);
+	for(int i = 0; i < ht->size; i++){
+		ht_item* item = ht->items[i];
+		if(item != NULL && item != &HT_DELETED_ITEM) {
+			ht_insert(new_ht, item->key, item->value);
+		}
+	}
+	ht->base_size = new_ht->base_size;
+	ht->count = new_ht->count;
+	/*to delete new_ht, we give it ht's size and items*/
+	const int tmp_size = ht->size;
+	ht->size = new_ht->size;
+	new_ht->size = tmp_size;
+
+	ht_item** tmp_items = ht->items;
+	ht->items = new_ht->items;
+	new_ht->items = tmp_items;
+
+	ht_del_hash_table(new_ht);
+}
+/*
+ * To simplify resizing,
+ * we define two small functions for resizing up and down.
+ */
+static void ht_resize_up(ht_hash_table* ht) {
+    const int new_size = ht->base_size * 2;
+    ht_resize(ht, new_size);
+}
+static void ht_resize_down(ht_hash_table* ht) {
+    const int new_size = ht->base_size / 2;
+    ht_resize(ht, new_size);
 }
 /*function ht_items and ht_hash_tables,
  * which free the memory we've allocated,
@@ -93,6 +147,10 @@ static int ht_get_hash(
  *  into the deleted slot*/
 void ht_insert(ht_hash_table *ht, const char *key, const char *value)
 {
+	const int load = ht->count * 100 / ht->size;
+	if(load > 70){
+		ht_resize_up(ht);
+	}
 	ht_item* item = ht_new_item(key,value);
 	int index = ht_get_hash(item->key, ht->size,0);
 	ht_item* cur_item = ht->items[index];
@@ -149,6 +207,10 @@ char* ht_search(ht_hash_table * ht, const char *key){
  * items in the tail of the chain impossible. To solve this, instead of deleting
  * the item, we simply mark it as deleted*/
 void ht_delete(ht_hash_table * ht, const char* key){
+	const int load = ht->count * 100 / ht-size;
+	if(load < 10){
+		ht_resize_down(ht);
+	}
 	int index = ht_get_hash(key, ht->size, 0);
 	ht_item *item = ht->items[index];
 	int i = 1;

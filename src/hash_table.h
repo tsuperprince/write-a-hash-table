@@ -1,7 +1,7 @@
 //hash_table.h
 
 /*define const parameter*/
-#define HASH_TABLE_MAX_SIZE 53
+#define HT_INITIAL_BASE_SIZE 53
 #define HT_PRIME_1 151
 #define HT_PRIME_2 163
 /*key-value pairs (items) will each be stored in a struct*/
